@@ -35,5 +35,3 @@ releases:
     version: ~0.37.8
     values:
       - opentelemetry-demo-values.yaml
-      - opentelemetry-demo-features.yaml.gotmpl
-      - opentelemetry-demo-cicd.yaml.gotmpl
