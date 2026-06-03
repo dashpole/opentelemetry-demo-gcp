@@ -138,6 +138,7 @@ func verifyTraces(ctx context.Context, client *trace.Client) error {
 		ProjectId: *projectID,
 		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
 		EndTime:   timestamppb.New(time.Now()),
+		View:      tracepb.ListTracesRequest_COMPLETE,
 	}
 	iter := client.ListTraces(ctx, req)
 	count := 0
@@ -167,6 +168,7 @@ func verifyTraces(ctx context.Context, client *trace.Client) error {
 		ProjectId: *projectID,
 		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
 		EndTime:   timestamppb.New(time.Now()),
+		View:      tracepb.ListTracesRequest_COMPLETE,
 	}
 	iter2 := client.ListTraces(ctx, req2)
 	for {
