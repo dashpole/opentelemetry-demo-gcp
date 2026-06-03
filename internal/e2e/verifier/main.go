@@ -74,24 +74,45 @@ func runVerification(ctx context.Context) error {
 
 	// Run verifications
 	fmt.Println("Verifying logs...")
-	if err := verifyLogs(ctx, logAdminClient); err != nil {
-		return fmt.Errorf("logs verification failed: %w", err)
+	if err := retry(ctx, "logs verification", 10*time.Second, func() error {
+		return verifyLogs(ctx, logAdminClient)
+	}); err != nil {
+		return err
 	}
 	fmt.Println("Logs verified successfully")
 
 	fmt.Println("Verifying traces...")
-	if err := verifyTraces(ctx, traceClient); err != nil {
-		return fmt.Errorf("traces verification failed: %w", err)
+	if err := retry(ctx, "traces verification", 10*time.Second, func() error {
+		return verifyTraces(ctx, traceClient)
+	}); err != nil {
+		return err
 	}
 	fmt.Println("Traces verified successfully")
 
 	fmt.Println("Verifying metrics...")
-	if err := verifyMetrics(ctx, metricClient); err != nil {
-		return fmt.Errorf("metrics verification failed: %w", err)
+	if err := retry(ctx, "metrics verification", 10*time.Second, func() error {
+		return verifyMetrics(ctx, metricClient)
+	}); err != nil {
+		return err
 	}
 	fmt.Println("Metrics verified successfully")
 
 	return nil
+}
+
+func retry(ctx context.Context, desc string, interval time.Duration, fn func() error) error {
+	for {
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		log.Printf("%s failed: %v. Retrying in %v...", desc, err, interval)
+		select {
+		case <-time.After(interval):
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for %s: %w", desc, ctx.Err())
+		}
+	}
 }
 
 func verifyLogs(ctx context.Context, client *logadmin.Client) error {
