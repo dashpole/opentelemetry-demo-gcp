@@ -86,6 +86,7 @@ trap cleanup EXIT
 cd "$kustomize_dir"
 
 cp "$src/kubernetes/opentelemetry-demo.yaml" ./
+cp "$src/kubernetes/managed-otel-service.yaml" ./
 
 cat > role.yaml <<EOF
 - op: replace
@@ -114,6 +115,7 @@ EOF
 cat > kustomization.yaml <<EOF
 resources:
 - opentelemetry-demo.yaml
+- managed-otel-service.yaml
 namespace: ${helmfile_vars["namespace"]}
 patches:
 - path: role.yaml
