@@ -17,20 +17,13 @@ steps:
   id: 'Get GKE Credentials'
   env:
   - 'KUBECONFIG=/workspace/kubeconfig'
-  entrypoint: 'bash'
   args:
-  - '-c'
-  - |
-    gcloud container clusters get-credentials "${_CLUSTER}" --zone="${_ZONE}" --project="${_PROJECT_ID}"
-    mkdir -p /workspace/bin
-    PLUGIN_PATH=$$(which gke-gcloud-auth-plugin || find / -name gke-gcloud-auth-plugin 2>/dev/null | head -n 1)
-    if [ -n "$$PLUGIN_PATH" ]; then
-      echo "Found plugin at $$PLUGIN_PATH, copying to /workspace/bin"
-      cp "$$PLUGIN_PATH" /workspace/bin/
-    else
-      echo "gke-gcloud-auth-plugin not found!"
-      exit 1
-    fi
+  - 'container'
+  - 'clusters'
+  - 'get-credentials'
+  - '${_CLUSTER}'
+  - '--zone=${_ZONE}'
+  - '--project=${_PROJECT_ID}'
 
 - name: 'golang:1.26'
   id: 'Build Verifier'
@@ -41,13 +34,12 @@ steps:
     cd internal/e2e/verifier
     CGO_ENABLED=0 go build -o verifier main.go
 
-- name: 'ghcr.io/helmfile/helmfile:v0.165.0'
+- name: 'gcr.io/cloud-builders/gcloud'
   id: 'Deploy and Verify'
-  entrypoint: 'sh'
+  entrypoint: 'bash'
   env:
   - 'KUBECONFIG=/workspace/kubeconfig'
   - 'PROJECT_ID=${_PROJECT_ID}'
-  - 'PATH=/workspace/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
   args:
   - '-c'
   - |
@@ -58,15 +50,26 @@ steps:
     }
     trap cleanup EXIT
 
-    # Install make and bash (needed by deploy.sh)
-    apk add make bash
+    # Install make (needed by deploy.sh)
+    apt-get update && apt-get install -y make
+
+    # Install Helm
+    curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz
+    tar -zxvf helm.tar.gz
+    mv linux-amd64/helm /usr/local/bin/helm
+
+    # Install Helmfile
+    curl -fsSL -o /tmp/helmfile https://github.com/helmfile/helmfile/releases/download/v0.165.0/helmfile_0.165.0_linux_amd64
+    chmod +x /tmp/helmfile
+    mv /tmp/helmfile /usr/local/bin/helmfile
+
+    # Install helm-diff
+    helm plugin install https://github.com/databus23/helm-diff
 
     echo "Creating namespace $${NAMESPACE}..."
     kubectl create namespace "$${NAMESPACE}"
 
     echo "Deploying demo..."
-    # deploy.sh uses relative paths, so we run it from root.
-    # It will use KUBECONFIG from env.
     ./gcp/deploy.sh -N "$${NAMESPACE}" -p "${_PROJECT_ID}"
 
     echo "Running verifier..."
