@@ -43,7 +43,7 @@ steps:
   args:
   - '-c'
   - |
-    NAMESPACE="otel-demo-pr-${_PR_NUMBER}"
+    NAMESPACE="otel-demo-pr-${_PR_NUMBER}-${SHORT_SHA}"
     cleanup() {
       echo "Cleaning up namespace $${NAMESPACE}..."
       kubectl delete namespace "$${NAMESPACE}" || true
