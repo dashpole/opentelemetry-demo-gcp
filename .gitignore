@@ -58,3 +58,6 @@ test/tracetesting/tracetesting-vars.yaml
 /src/currencyservice/proto
 /src/checkoutservice/genproto
 /src/accountingservice/genproto
+
+# E2E Verifier binary
+internal/e2e/verifier/verifier

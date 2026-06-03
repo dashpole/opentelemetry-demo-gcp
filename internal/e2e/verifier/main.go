@@ -1,0 +1,175 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"cloud.google.com/go/logging/logadmin"
+	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
+	"cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
+	trace "cloud.google.com/go/trace/apiv1"
+	"cloud.google.com/go/trace/apiv1/tracepb"
+	"google.golang.org/api/iterator"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+var (
+	projectID = flag.String("project", "", "GCP Project ID")
+	namespace = flag.String("namespace", "", "Kubernetes namespace")
+	timeout   = flag.Duration("timeout", 5*time.Minute, "Timeout for the entire verification process")
+	waitSec   = flag.Duration("wait", 2*time.Minute, "Time to wait for telemetry to propagate before verifying")
+)
+
+func main() {
+	flag.Parse()
+
+	if *projectID == "" {
+		log.Fatal("--project is required")
+	}
+	if *namespace == "" {
+		log.Fatal("--namespace is required")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+
+	fmt.Printf("Waiting %v for telemetry to propagate...\n", *waitSec)
+	select {
+	case <-time.After(*waitSec):
+	case <-ctx.Done():
+		log.Fatalf("Timeout waiting for propagation: %v", ctx.Err())
+	}
+
+	err := runVerification(ctx)
+	if err != nil {
+		fmt.Printf("Verification FAILED: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Verification PASSED")
+}
+
+func runVerification(ctx context.Context) error {
+	// Initialize clients
+	logAdminClient, err := logadmin.NewClient(ctx, *projectID)
+	if err != nil {
+		return fmt.Errorf("failed to create logadmin client: %w", err)
+	}
+	defer logAdminClient.Close()
+
+	traceClient, err := trace.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create trace client: %w", err)
+	}
+	defer traceClient.Close()
+
+	metricClient, err := monitoring.NewMetricClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create metric client: %w", err)
+	}
+	defer metricClient.Close()
+
+	// Run verifications
+	fmt.Println("Verifying logs...")
+	if err := verifyLogs(ctx, logAdminClient); err != nil {
+		return fmt.Errorf("logs verification failed: %w", err)
+	}
+	fmt.Println("Logs verified successfully")
+
+	fmt.Println("Verifying traces...")
+	if err := verifyTraces(ctx, traceClient); err != nil {
+		return fmt.Errorf("traces verification failed: %w", err)
+	}
+	fmt.Println("Traces verified successfully")
+
+	fmt.Println("Verifying metrics...")
+	if err := verifyMetrics(ctx, metricClient); err != nil {
+		return fmt.Errorf("metrics verification failed: %w", err)
+	}
+	fmt.Println("Metrics verified successfully")
+
+	return nil
+}
+
+func verifyLogs(ctx context.Context, client *logadmin.Client) error {
+	filter := fmt.Sprintf(`resource.type="k8s_container" AND resource.labels.namespace_name=%q`, *namespace)
+	startTime := time.Now().Add(-10 * time.Minute).Format(time.RFC3339)
+	filter += fmt.Sprintf(` AND timestamp >= %q`, startTime)
+
+	iter := client.Entries(ctx, logadmin.Filter(filter))
+	entry, err := iter.Next()
+	if err == iterator.Done {
+		return fmt.Errorf("no logs found matching filter: %s", filter)
+	}
+	if err != nil {
+		return fmt.Errorf("error reading logs: %w", err)
+	}
+	fmt.Printf("Found log entry: %v\n", entry.Payload)
+	return nil
+}
+
+func verifyTraces(ctx context.Context, client *trace.Client) error {
+	req := &tracepb.ListTracesRequest{
+		ProjectId: *projectID,
+		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
+		EndTime:   timestamppb.New(time.Now()),
+		Filter:    fmt.Sprintf(`+k8s.namespace.name:%s`, *namespace),
+	}
+	iter := client.ListTraces(ctx, req)
+	tr, err := iter.Next()
+	if err == iterator.Done {
+		return fmt.Errorf("no traces found with filter: %s", req.Filter)
+	}
+	if err != nil {
+		return fmt.Errorf("error listing traces: %w", err)
+	}
+	fmt.Printf("Found trace: %s\n", tr.TraceId)
+	return nil
+}
+
+func verifyMetrics(ctx context.Context, client *monitoring.MetricClient) error {
+	metricType := "prometheus.googleapis.com/app.frontend.requests/counter"
+	req := &monitoringpb.ListTimeSeriesRequest{
+		Name:   fmt.Sprintf("projects/%s", *projectID),
+		Filter: fmt.Sprintf(`metric.type = %q`, metricType),
+		Interval: &monitoringpb.TimeInterval{
+			StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
+			EndTime:   timestamppb.New(time.Now()),
+		},
+	}
+	iter := client.ListTimeSeries(ctx, req)
+	fmt.Println("Found TimeSeries:")
+	count := 0
+	matchedCount := 0
+	for {
+		ts, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error listing metrics: %w", err)
+		}
+		ns := ts.Resource.Labels["namespace"]
+		job := ts.Resource.Labels["job"]
+		
+		isMatched := ns == *namespace || 
+			(ns == "" && (fmt.Sprintf("%s", ts.Resource.Labels) == *namespace || 
+				fmt.Sprintf("%s", ts.Metric.Labels) == *namespace)) ||
+			(job != "" && (job == *namespace || job == fmt.Sprintf("%s/%s", *namespace, "frontend")))
+
+		if isMatched {
+			fmt.Printf("MATCHED - Job: %s, ResourceLabels: %v, ResourceType: %s, MetricLabels: %v\n",
+				job, ts.Resource.Labels, ts.Resource.Type, ts.Metric.Labels)
+			matchedCount++
+		}
+		count++
+	}
+	fmt.Printf("Total timeseries checked: %d, Matched: %d\n", count, matchedCount)
+	if matchedCount > 0 {
+		return nil
+	}
+	return fmt.Errorf("no metrics found for namespace %s", *namespace)
+}

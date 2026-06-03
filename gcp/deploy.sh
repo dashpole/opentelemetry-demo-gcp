@@ -86,6 +86,8 @@ trap cleanup EXIT
 cd "$kustomize_dir"
 
 cp "$src/kubernetes/opentelemetry-demo.yaml" ./
+sed -i "s/service.namespace=opentelemetry-demo/service.namespace=${helmfile_vars["namespace"]}/g" opentelemetry-demo.yaml
+
 
 cat > role.yaml <<EOF
 - op: replace
