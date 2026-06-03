@@ -53,15 +53,15 @@ steps:
     # Install make (needed by deploy.sh)
     apt-get update && apt-get install -y make
 
-    # Install Helm
-    curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz
+    # Install Helm (v3.18.0 to support newer helm-diff)
+    curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-v3.18.0-linux-amd64.tar.gz
     tar -zxvf helm.tar.gz
     mv linux-amd64/helm /usr/local/bin/helm
 
-    # Install Helmfile
-    curl -fsSL -o /tmp/helmfile https://github.com/helmfile/helmfile/releases/download/v0.165.0/helmfile_0.165.0_linux_amd64
-    chmod +x /tmp/helmfile
-    mv /tmp/helmfile /usr/local/bin/helmfile
+    # Install Helmfile (v0.165.0)
+    curl -fsSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.165.0/helmfile_0.165.0_linux_amd64.tar.gz
+    tar -zxvf helmfile.tar.gz
+    mv helmfile /usr/local/bin/helmfile
 
     # Install helm-diff
     helm plugin install https://github.com/databus23/helm-diff
