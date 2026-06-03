@@ -17,13 +17,20 @@ steps:
   id: 'Get GKE Credentials'
   env:
   - 'KUBECONFIG=/workspace/kubeconfig'
+  entrypoint: 'bash'
   args:
-  - 'container'
-  - 'clusters'
-  - 'get-credentials'
-  - '${_CLUSTER}'
-  - '--zone=${_ZONE}'
-  - '--project=${_PROJECT_ID}'
+  - '-c'
+  - |
+    gcloud container clusters get-credentials "${_CLUSTER}" --zone="${_ZONE}" --project="${_PROJECT_ID}"
+    mkdir -p /workspace/bin
+    PLUGIN_PATH=$(which gke-gcloud-auth-plugin || find / -name gke-gcloud-auth-plugin 2>/dev/null | head -n 1)
+    if [ -n "$PLUGIN_PATH" ]; then
+      echo "Found plugin at $PLUGIN_PATH, copying to /workspace/bin"
+      cp "$PLUGIN_PATH" /workspace/bin/
+    else
+      echo "gke-gcloud-auth-plugin not found!"
+      exit 1
+    fi
 
 - name: 'golang:1.26'
   id: 'Build Verifier'
@@ -32,7 +39,7 @@ steps:
   - '-c'
   - |
     cd internal/e2e/verifier
-    go build -o verifier main.go
+    CGO_ENABLED=0 go build -o verifier main.go
 
 - name: 'ghcr.io/helmfile/helmfile:v0.165.0'
   id: 'Deploy and Verify'
@@ -40,6 +47,7 @@ steps:
   env:
   - 'KUBECONFIG=/workspace/kubeconfig'
   - 'PROJECT_ID=${_PROJECT_ID}'
+  - 'PATH=/workspace/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
   args:
   - '-c'
   - |
