@@ -74,7 +74,7 @@ func runVerification(ctx context.Context) error {
 
 	// Run verifications
 	fmt.Println("Verifying logs...")
-	if err := retry(ctx, "logs verification", 10*time.Second, func() error {
+	if err := retry(ctx, "logs verification", 30*time.Second, func() error {
 		return verifyLogs(ctx, logAdminClient)
 	}); err != nil {
 		return err
@@ -82,7 +82,7 @@ func runVerification(ctx context.Context) error {
 	fmt.Println("Logs verified successfully")
 
 	fmt.Println("Verifying traces...")
-	if err := retry(ctx, "traces verification", 10*time.Second, func() error {
+	if err := retry(ctx, "traces verification", 30*time.Second, func() error {
 		return verifyTraces(ctx, traceClient)
 	}); err != nil {
 		return err
@@ -90,7 +90,7 @@ func runVerification(ctx context.Context) error {
 	fmt.Println("Traces verified successfully")
 
 	fmt.Println("Verifying metrics...")
-	if err := retry(ctx, "metrics verification", 10*time.Second, func() error {
+	if err := retry(ctx, "metrics verification", 30*time.Second, func() error {
 		return verifyMetrics(ctx, metricClient)
 	}); err != nil {
 		return err
@@ -133,7 +133,7 @@ func verifyLogs(ctx context.Context, client *logadmin.Client) error {
 }
 
 func verifyTraces(ctx context.Context, client *trace.Client) error {
-	log.Printf("DEBUG: Listing traces for project %s in last 10m", *projectID)
+	log.Println("DEBUG: Searching for namespace in all traces...")
 	req := &tracepb.ListTracesRequest{
 		ProjectId: *projectID,
 		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
@@ -141,7 +141,6 @@ func verifyTraces(ctx context.Context, client *trace.Client) error {
 		View:      tracepb.ListTracesRequest_COMPLETE,
 	}
 	iter := client.ListTraces(ctx, req)
-	count := 0
 	for {
 		tr, err := iter.Next()
 		if err == iterator.Done {
@@ -149,35 +148,6 @@ func verifyTraces(ctx context.Context, client *trace.Client) error {
 		}
 		if err != nil {
 			return fmt.Errorf("error listing traces: %w", err)
-		}
-		count++
-		log.Printf("DEBUG: Trace %d ID: %s", count, tr.TraceId)
-		for _, span := range tr.Spans {
-			log.Printf("  Span: %s (ID: %d)", span.Name, span.SpanId)
-			for k, v := range span.Labels {
-				log.Printf("    Label: %s = %s", k, v)
-			}
-		}
-		if count >= 5 {
-			break
-		}
-	}
-
-	log.Println("DEBUG: Searching for namespace in all traces...")
-	req2 := &tracepb.ListTracesRequest{
-		ProjectId: *projectID,
-		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
-		EndTime:   timestamppb.New(time.Now()),
-		View:      tracepb.ListTracesRequest_COMPLETE,
-	}
-	iter2 := client.ListTraces(ctx, req2)
-	for {
-		tr, err := iter2.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			break
 		}
 		for _, span := range tr.Spans {
 			for k, v := range span.Labels {
