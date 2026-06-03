@@ -23,10 +23,10 @@ steps:
   - |
     gcloud container clusters get-credentials "${_CLUSTER}" --zone="${_ZONE}" --project="${_PROJECT_ID}"
     mkdir -p /workspace/bin
-    PLUGIN_PATH=$(which gke-gcloud-auth-plugin || find / -name gke-gcloud-auth-plugin 2>/dev/null | head -n 1)
-    if [ -n "$PLUGIN_PATH" ]; then
-      echo "Found plugin at $PLUGIN_PATH, copying to /workspace/bin"
-      cp "$PLUGIN_PATH" /workspace/bin/
+    PLUGIN_PATH=$$(which gke-gcloud-auth-plugin || find / -name gke-gcloud-auth-plugin 2>/dev/null | head -n 1)
+    if [ -n "$$PLUGIN_PATH" ]; then
+      echo "Found plugin at $$PLUGIN_PATH, copying to /workspace/bin"
+      cp "$$PLUGIN_PATH" /workspace/bin/
     else
       echo "gke-gcloud-auth-plugin not found!"
       exit 1
