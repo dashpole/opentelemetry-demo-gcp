@@ -45,24 +45,24 @@ steps:
   - |
     NAMESPACE="otel-demo-pr-${_PR_NUMBER}"
     cleanup() {
-      echo "Cleaning up namespace ${NAMESPACE}..."
-      kubectl delete namespace "${NAMESPACE}" || true
+      echo "Cleaning up namespace $${NAMESPACE}..."
+      kubectl delete namespace "$${NAMESPACE}" || true
     }
     trap cleanup EXIT
 
     # Install make and bash (needed by deploy.sh)
     apk add make bash
 
-    echo "Creating namespace ${NAMESPACE}..."
-    kubectl create namespace "${NAMESPACE}"
+    echo "Creating namespace $${NAMESPACE}..."
+    kubectl create namespace "$${NAMESPACE}"
 
     echo "Deploying demo..."
     # deploy.sh uses relative paths, so we run it from root.
     # It will use KUBECONFIG from env.
-    ./gcp/deploy.sh -N "${NAMESPACE}" -p "${_PROJECT_ID}"
+    ./gcp/deploy.sh -N "$${NAMESPACE}" -p "${_PROJECT_ID}"
 
     echo "Running verifier..."
-    ./internal/e2e/verifier/verifier --project="${_PROJECT_ID}" --namespace="${NAMESPACE}" --wait=2m --timeout=5m
+    ./internal/e2e/verifier/verifier --project="${_PROJECT_ID}" --namespace="$${NAMESPACE}" --wait=2m --timeout=5m
 
 substitutions:
   _CLUSTER: 'opentelemetry-demo-test'
