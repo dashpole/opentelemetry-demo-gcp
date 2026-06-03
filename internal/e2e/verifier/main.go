@@ -133,22 +133,64 @@ func verifyLogs(ctx context.Context, client *logadmin.Client) error {
 }
 
 func verifyTraces(ctx context.Context, client *trace.Client) error {
+	log.Printf("DEBUG: Listing traces for project %s in last 10m", *projectID)
 	req := &tracepb.ListTracesRequest{
 		ProjectId: *projectID,
 		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
 		EndTime:   timestamppb.New(time.Now()),
-		Filter:    fmt.Sprintf(`+k8s.namespace.name:%s`, *namespace),
 	}
 	iter := client.ListTraces(ctx, req)
-	tr, err := iter.Next()
-	if err == iterator.Done {
-		return fmt.Errorf("no traces found with filter: %s", req.Filter)
+	count := 0
+	for {
+		tr, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error listing traces: %w", err)
+		}
+		count++
+		log.Printf("DEBUG: Trace %d ID: %s", count, tr.TraceId)
+		for _, span := range tr.Spans {
+			log.Printf("  Span: %s (ID: %d)", span.Name, span.SpanId)
+			for k, v := range span.Labels {
+				log.Printf("    Label: %s = %s", k, v)
+			}
+		}
+		if count >= 5 {
+			break
+		}
 	}
-	if err != nil {
-		return fmt.Errorf("error listing traces: %w", err)
+
+	log.Println("DEBUG: Searching for namespace in all traces...")
+	req2 := &tracepb.ListTracesRequest{
+		ProjectId: *projectID,
+		StartTime: timestamppb.New(time.Now().Add(-10 * time.Minute)),
+		EndTime:   timestamppb.New(time.Now()),
 	}
-	fmt.Printf("Found trace: %s\n", tr.TraceId)
-	return nil
+	iter2 := client.ListTraces(ctx, req2)
+	for {
+		tr, err := iter2.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+		for _, span := range tr.Spans {
+			for k, v := range span.Labels {
+				if v == *namespace {
+					log.Printf("DEBUG: Found namespace %s in label %s of span %s (trace %s)", *namespace, k, span.Name, tr.TraceId)
+				}
+				if k == "k8s.namespace.name" && v == *namespace {
+					fmt.Printf("Found trace: %s (via k8s.namespace.name check in Go)\n", tr.TraceId)
+					return nil
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("no traces found for namespace %s (debug run)", *namespace)
 }
 
 func verifyMetrics(ctx context.Context, client *monitoring.MetricClient) error {
