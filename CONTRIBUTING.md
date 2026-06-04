@@ -30,59 +30,12 @@ This project follows
 
 ## Development Environment
 
-You can contribute to this project from a Windows, macOS or Linux machine. The
-first step to contributing is ensuring you can run the demo successfully from
-your local machine.
+Since this fork is focused on Google Cloud integration, development and
+testing is performed by deploying to a Google Kubernetes Engine (GKE) cluster.
+Local testing via Docker Compose is unsupported.
 
-On all platforms, the minimum requirements are:
-
-- Docker
-- [Docker Compose](https://docs.docker.com/compose/install/#install-compose) v2.0.0+
-
-### Clone Repo
-
-- Clone the Webstore Demo repository:
-
-```shell
-git clone https://github.com/open-telemetry/opentelemetry-demo.git
-```
-
-### Open Folder
-
-- Navigate to the cloned folder:
-
-```shell
-cd opentelemetry-demo/
-```
-
-### Gradle Update [Windows Only]
-
-- Navigate to the Java Ad Service folder to install and update Gradle:
-
-```shell
-cd .\src\adservice\
-.\gradlew installDist
-.\gradlew wrapper --gradle-version 7.4.2
-```
-
-### Run Docker Compose
-
-- Start the demo (It can take ~20min the first time the command is executed as
-all the images will be build):
-
-```shell
-docker compose up -d
-```
-
-### Verify the Webstore & the Telemetry
-
-Once the images are built and containers are started you can access:
-
-- Webstore: <http://localhost:8080/>
-- Jaeger: <http://localhost:8080/jaeger/ui/>
-- Grafana: <http://localhost:8080/grafana/>
-- Feature Flags UI: <http://localhost:8080/feature/>
-- Load Generator UI: <http://localhost:8080/loadgen//>
+Refer to [README.md](README.md) for deployment instructions and
+[agents.md](agents.md) for detailed testing guidelines.
 
 ### Review the Documentation
 
@@ -126,9 +79,7 @@ Check out a new branch, make modifications and push the branch to your fork:
 ```sh
 $ git checkout -b feature
 # change files
-# Test your changes locally.
-$ docker compose up -d --build
-# Go to Webstore, Jaeger or docker container logs etc. as appropriate to make sure your changes are working correctly.
+# Test your changes on GKE (see agents.md).
 $ git add my/changed/files
 $ git commit -m "short description of the change"
 $ git push fork feature

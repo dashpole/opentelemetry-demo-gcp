@@ -1,147 +1,111 @@
-<!-- markdownlint-disable-next-line -->
-# <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" alt="OTel logo" width="45"> OpenTelemetry Demo with Google Cloud
+# OpenTelemetry Demo with Google Cloud
 
-[![Slack](https://img.shields.io/badge/slack-@cncf/otel/demo-brightgreen.svg?logo=slack)](https://cloud-native.slack.com/archives/C03B4CWV4DA)
-[![Version](https://img.shields.io/github/v/release/open-telemetry/opentelemetry-demo?color=blueviolet)](https://github.com/open-telemetry/opentelemetry-demo/releases)
-[![Commits](https://img.shields.io/github/commits-since/open-telemetry/opentelemetry-demo/latest?color=ff69b4&include_prereleases)](https://github.com/open-telemetry/opentelemetry-demo/graphs/commit-activity)
-[![Downloads](https://img.shields.io/docker/pulls/otel/demo)](https://hub.docker.com/r/otel/demo)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?color=red)](https://github.com/open-telemetry/opentelemetry-demo/blob/main/LICENSE)
-[![Integration Tests](https://github.com/open-telemetry/opentelemetry-demo/actions/workflows/run-integration-tests.yml/badge.svg)](https://github.com/open-telemetry/opentelemetry-demo/actions/workflows/run-integration-tests.yml)
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/opentelemetry-demo)](https://artifacthub.io/packages/helm/opentelemetry-helm/opentelemetry-demo)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/9247/badge)](https://www.bestpractices.dev/en/projects/9247)
-
-## Welcome to the OpenTelemetry Astronomy Shop Demo with Google Cloud
-
-This repository contains a fork of [open-telemetry/opentelemetry-demo](https://github.com/open-telemetry/opentelemetry-demo),
-which integrates with Google Cloud Monitoring, Logging, and Trace.
+This repository contains deployment configuration and instructions for deploying
+the upstream [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo)
+configured to work with Google Cloud Observability products (Cloud Monitoring,
+Cloud Logging, and Cloud Trace).
 
 **This is not an officially supported Google product.**
 
-For details on how to use this with GCP, see [`README_GCP.md`](README_GCP.md).
+## Repository Overview
 
-This repository contains the OpenTelemetry Astronomy Shop, a microservice-based
-distributed system intended to illustrate the implementation of OpenTelemetry in
-a near real-world environment.
+This repository does not contain the source code for the microservices. It is
+used to deploy the OpenTelemetry Astronomy Shop (using upstream images) and
+configure GCP integrations.
 
-Our goals are threefold:
+- For general information about the upstream demo, see the
+  [upstream repository](https://github.com/open-telemetry/opentelemetry-demo).
+- For guidelines on how to contribute or develop in this repo, see
+  [CONTRIBUTING.md](CONTRIBUTING.md) and [agents.md](agents.md).
+- To register the deployed demo with GCP App Hub, see the
+  [App Hub Skill](.agents/skills/register-apphub/SKILL.md).
 
-- Provide a realistic example of a distributed system that can be used to
-  demonstrate OpenTelemetry instrumentation and observability.
-- Build a base for vendors, tooling authors, and others to extend and
-  demonstrate their OpenTelemetry integrations.
-- Create a living example for OpenTelemetry contributors to use for testing new
-  versions of the API, SDK, and other components or enhancements.
+## Running on GKE
 
-We've already made [huge
-progress](https://github.com/open-telemetry/opentelemetry-demo/blob/main/CHANGELOG.md),
-and development is ongoing. We hope to represent the full feature set of
-OpenTelemetry across its languages in the future.
+The recommended way to run the demo on GKE is with the official Helm chart via Helmfile.
 
-If you'd like to help (**which we would love**), check out our [contributing
-guidance](./CONTRIBUTING.md).
+### GKE Managed OpenTelemetry Prerequisites
 
-If you'd like to extend this demo or maintain a fork of it, read our
-[fork guidance](https://opentelemetry.io/docs/demo/forking/).
+You must enable Managed OpenTelemetry on your GKE cluster.
 
-## Quick start
+For a new GKE Autopilot cluster:
 
-You can be up and running with the demo in a few minutes. Check out the docs for
-your preferred deployment method:
+```console
+gcloud beta container clusters create-auto CLUSTER_NAME \
+    --project=PROJECT_ID \
+    --managed-otel-scope=COLLECTION_AND_INSTRUMENTATION_COMPONENTS \
+    --location=LOCATION
+```
 
-- [Docker](https://opentelemetry.io/docs/demo/docker_deployment/)
-- [Kubernetes](https://opentelemetry.io/docs/demo/kubernetes_deployment/)
+For a new GKE Standard cluster:
 
-## Documentation
+```console
+gcloud beta container clusters create CLUSTER_NAME \
+    --project=PROJECT_ID \
+    --managed-otel-scope=COLLECTION_AND_INSTRUMENTATION_COMPONENTS \
+    --location=LOCATION
+```
 
-For detailed documentation, see [Demo Documentation][docs]. If you're curious
-about a specific feature, the [docs landing page][docs] can point you in the
-right direction.
+Or update an existing cluster:
 
-## Demos featuring the Astronomy Shop
+```console
+gcloud beta container clusters update CLUSTER_NAME \
+    --project=PROJECT_ID \
+    --managed-otel-scope=COLLECTION_AND_INSTRUMENTATION_COMPONENTS \
+    --location=LOCATION
+```
 
-We welcome any vendor to fork the project to demonstrate their services and
-adding a link below. The community is committed to maintaining the project and
-keeping it up to date for you.
+Replace `CLUSTER_NAME`, `PROJECT_ID`, and `LOCATION` with your cluster's details.
 
-|                                         |                             |                                                                |
-|-----------------------------------------|-----------------------------|----------------------------------------------------------------|
-| [AlibabaCloud LogService][AlibabaCloud] | [Elastic][Elastic]          | [New Relic][NewRelic]                                          |
-| [AppDynamics][AppDynamics]              | [Google Cloud][GoogleCloud] | [OpenSearch][OpenSearch]                                       |
-| [Aspecto][Aspecto]                      | [Grafana Labs][GrafanaLabs] | [Sentry][Sentry]                                               |
-| [Axiom][Axiom]                          | [Guance][Guance]            | [ServiceNow Cloud Observability][ServiceNowCloudObservability] |
-| [Axoflow][Axoflow]                      | [Helios][Helios]            | [Splunk][Splunk]                                               |
-| [Azure Data Explorer][Azure]            | [Honeycomb.io][Honeycombio] | [Sumo Logic][SumoLogic]                                        |
-| [Coralogix][Coralogix]                  | [Instana][Instana]          | [TelemetryHub][TelemetryHub]                                   |
-| [Dash0][Dash0]                          | [Kloudfuse][Kloudfuse]      | [Teletrace][Teletrace]                                         |
-| [Datadog][Datadog]                      | [Liatrio][Liatrio]          | [Tracetest][Tracetest]                                         |
-| [Dynatrace][Dynatrace]                  | [Logz.io][Logzio]           | [Uptrace][Uptrace]                                             |
+Note: The cluster version must be `1.34.1-gke.2178000` or later.
 
-## Contributing
+### Deploying with Helmfile
 
-To get involved with the project see our [CONTRIBUTING](CONTRIBUTING.md)
-documentation. Our [SIG Calls](CONTRIBUTING.md#join-a-sig-call) are every other
-Monday at 8:30 AM PST and anyone is welcome.
+Make sure you have the following installed:
 
-## Project leadership
+- [Helmfile](https://helmfile.readthedocs.io/en/stable/#installation)
+- [Helm](https://helm.sh/docs/intro/install/)
+- [helm-diff plugin](https://github.com/databus23/helm-diff)
 
-[Maintainers](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer)
-([@open-telemetry/demo-maintainers](https://github.com/orgs/open-telemetry/teams/demo-maintainers)):
+Ensure you have either configured or disabled Workload Identity in your cluster.
 
-- [Juliano Costa](https://github.com/julianocosta89), Datadog
-- [Mikko Viitanen](https://github.com/mviitane), Dynatrace
-- [Pierre Tessier](https://github.com/puckpuck), Honeycomb
+```console
+helmfile --interactive apply -f gcp/helmfile.yaml
+```
 
-[Approvers](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
-([@open-telemetry/demo-approvers](https://github.com/orgs/open-telemetry/teams/demo-approvers)):
+#### Cleaning up
 
-- [Cedric Ziel](https://github.com/cedricziel) Grafana Labs
-- [Penghan Wang](https://github.com/wph95), AppDynamics
-- [Reiley Yang](https://github.com/reyang), Microsoft
-- [Roger Coll](https://github.com/rogercoll), Elastic
-- [Ziqi Zhao](https://github.com/fatsheep9146), Alibaba
+To clean up, run:
 
-Emeritus:
+```console
+helmfile --interactive destroy -f gcp/helmfile.yaml
+```
 
-- [Austin Parker](https://github.com/austinlparker)
-- [Carter Socha](https://github.com/cartersocha)
-- [Michael Maxwell](https://github.com/mic-max)
-- [Morgan McLean](https://github.com/mtwo)
+### (Alternative) Using `kubectl apply`
 
-### Thanks to all the people who have contributed
+Installing with the Helm chart is recommended, but you can also use
+`kubectl apply` to install the manifests directly.
 
-[![contributors](https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-demo)](https://github.com/open-telemetry/opentelemetry-demo/graphs/contributors)
+First, make sure you have followed the Workload Identity setup steps above.
 
-[docs]: https://opentelemetry.io/docs/demo/
+Install the manifests:
 
-<!-- Links for Demos featuring the Astronomy Shop section -->
+```console
+kubectl apply -n otel-demo -f ./kubernetes/opentelemetry-demo.yaml
+```
 
-[AlibabaCloud]: https://github.com/aliyun-sls/opentelemetry-demo
-[AppDynamics]: https://www.appdynamics.com/blog/cloud/how-to-observe-opentelemetry-demo-app-in-appdynamics-cloud/
-[Aspecto]: https://github.com/aspecto-io/opentelemetry-demo
-[Axiom]: https://play.axiom.co/axiom-play-qf1k/dashboards/otel.traces.otel-demo-traces
-[Axoflow]: https://axoflow.com/opentelemetry-support-in-more-detail-in-axosyslog-and-syslog-ng/
-[Azure]: https://github.com/Azure/Azure-kusto-opentelemetry-demo
-[Coralogix]: https://coralogix.com/blog/configure-otel-demo-send-telemetry-data-coralogix
-[Dash0]: https://github.com/dash0hq/opentelemetry-demo
-[Datadog]: https://docs.datadoghq.com/opentelemetry/guide/otel_demo_to_datadog
-[Dynatrace]: https://www.dynatrace.com/news/blog/opentelemetry-demo-application-with-dynatrace/
-[Elastic]: https://github.com/elastic/opentelemetry-demo
-[GoogleCloud]: https://github.com/GoogleCloudPlatform/opentelemetry-demo
-[GrafanaLabs]: https://github.com/grafana/opentelemetry-demo
-[Guance]: https://github.com/GuanceCloud/opentelemetry-demo
-[Helios]: https://otelsandbox.gethelios.dev
-[Honeycombio]: https://github.com/honeycombio/opentelemetry-demo
-[Instana]: https://github.com/instana/opentelemetry-demo
-[Kloudfuse]: https://github.com/kloudfuse/opentelemetry-demo
-[Liatrio]: https://github.com/liatrio/opentelemetry-demo
-[Logzio]: https://logz.io/learn/how-to-run-opentelemetry-demo-with-logz-io/
-[NewRelic]: https://github.com/newrelic/opentelemetry-demo
-[OpenSearch]: https://github.com/opensearch-project/opentelemetry-demo
-[Sentry]: https://github.com/getsentry/opentelemetry-demo
-[ServiceNowCloudObservability]: https://docs.lightstep.com/otel/quick-start-operator#send-data-from-the-opentelemetry-demo
-[Splunk]: https://github.com/signalfx/opentelemetry-demo
-[SumoLogic]: https://www.sumologic.com/blog/common-opentelemetry-demo-application/
-[TelemetryHub]: https://github.com/TelemetryHub/opentelemetry-demo/tree/telemetryhub-backend
-[Teletrace]: https://github.com/teletrace/opentelemetry-demo
-[Tracetest]: https://github.com/kubeshop/opentelemetry-demo
-[Uptrace]: https://github.com/uptrace/uptrace/tree/master/example/opentelemetry-demo
+## Seeing Telemetry
+
+With the demo running, you should see telemetry automatically created by the
+demo's load generator. You can see metrics under "Prometheus Target" in Cloud
+Monitoring:
+
+![metrics](gcp_metrics.png)
+
+Traces in the Trace explorer:
+
+![traces](gcp_traces.png)
+
+And logs in the Logs explorer organized by service:
+
+![logs](gcp_logs.png)
