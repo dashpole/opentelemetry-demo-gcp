@@ -10,8 +10,6 @@ TOOLS_DIR := ./internal/tools
 MISSPELL_BINARY=bin/misspell
 MISSPELL = $(TOOLS_DIR)/$(MISSPELL_BINARY)
 
-DOCKER_COMPOSE_CMD ?= docker compose
-DOCKER_COMPOSE_ENV=--env-file .env --env-file .env.override
 
 # see https://github.com/open-telemetry/build-tools/releases for semconvgen updates
 # Keep links in semantic_conventions/README.md and .vscode/settings.json in sync!
@@ -75,41 +73,6 @@ install-tools: $(MISSPELL)
 	npm install
 	@echo "All tools installed"
 
-.PHONY: build
-build:
-	$(DOCKER_COMPOSE_CMD) build
-
-.PHONY: build-and-push-dockerhub
-build-and-push-dockerhub:
-	$(DOCKER_COMPOSE_CMD) --env-file .dockerhub.env -f docker-compose.yml build
-	$(DOCKER_COMPOSE_CMD) --env-file .dockerhub.env -f docker-compose.yml push
-
-.PHONY: build-and-push-ghcr
-build-and-push-ghcr:
-	$(DOCKER_COMPOSE_CMD) --env-file .ghcr.env -f docker-compose.yml build
-	$(DOCKER_COMPOSE_CMD) --env-file .ghcr.env -f docker-compose.yml push
-
-.PHONY: build-env-file
-build-env-file:
-	cp .env .dockerhub.env
-	sed -i '/IMAGE_VERSION=.*/c\IMAGE_VERSION=${RELEASE_VERSION}' .dockerhub.env
-	sed -i '/IMAGE_NAME=.*/c\IMAGE_NAME=${DOCKERHUB_REPO}' .dockerhub.env
-	cp .env .ghcr.env
-	sed -i '/IMAGE_VERSION=.*/c\IMAGE_VERSION=${RELEASE_VERSION}' .ghcr.env
-	sed -i '/IMAGE_NAME=.*/c\IMAGE_NAME=${GHCR_REPO}' .ghcr.env
-
-.PHONY: run-tests
-run-tests:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) -f docker-compose-tests.yml run frontendTests
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) -f docker-compose-tests.yml run traceBasedTests
-
-.PHONY: run-tracetesting
-run-tracetesting:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) -f docker-compose-tests.yml run traceBasedTests ${SERVICES_TO_TEST}
-
-.PHONY: generate-protobuf
-generate-protobuf:
-	./ide-gen-proto.sh
 
 HELMFILE_FLAGS=--namespace otel-demo
 
@@ -127,69 +90,4 @@ generate-kubernetes-manifests:
 
 
 
-.PHONY: start
-start:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) up --force-recreate --remove-orphans --detach
-	@echo ""
-	@echo "OpenTelemetry Demo is running."
-	@echo "Go to http://localhost:8080 for the demo UI."
-	@echo "Go to http://localhost:8080/jaeger/ui for the Jaeger UI."
-	@echo "Go to http://localhost:8080/grafana/ for the Grafana UI."
-	@echo "Go to http://localhost:8080/loadgen/ for the Load Generator UI."
-	@echo "Go to https://opentelemetry.io/docs/demo/feature-flags/ to learn how to change feature flags."
-
-.PHONY: start-minimal
-start-minimal:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) -f docker-compose.minimal.yml up --force-recreate --remove-orphans --detach
-	@echo ""
-	@echo "OpenTelemetry Demo in minimal mode is running."
-	@echo "Go to http://localhost:8080 for the demo UI."
-	@echo "Go to http://localhost:8080/jaeger/ui for the Jaeger UI."
-	@echo "Go to http://localhost:8080/grafana/ for the Grafana UI."
-	@echo "Go to http://localhost:8080/loadgen/ for the Load Generator UI."
-	@echo "Go to https://opentelemetry.io/docs/demo/feature-flags/ to learn how to change feature flags."
-
-.PHONY: stop
-stop:
-	$(DOCKER_COMPOSE_CMD) down --remove-orphans --volumes
-	$(DOCKER_COMPOSE_CMD) -f docker-compose-tests.yml down --remove-orphans --volumes
-	@echo ""
-	@echo "OpenTelemetry Demo is stopped."
-
-# Use to restart a single service component
-# Example: make restart service=frontend
-.PHONY: restart
-restart:
-# work with `service` or `SERVICE` as input
-ifdef SERVICE
-	service := $(SERVICE)
-endif
-
-ifdef service
-	$(DOCKER_COMPOSE_CMD) stop $(service)
-	$(DOCKER_COMPOSE_CMD) rm --force $(service)
-	$(DOCKER_COMPOSE_CMD) create $(service)
-	$(DOCKER_COMPOSE_CMD) start $(service)
-else
-	@echo "Please provide a service name using `service=[service name]` or `SERVICE=[service name]`"
-endif
-
-# Use to rebuild and restart (redeploy) a single service component
-# Example: make redeploy service=frontend
-.PHONY: redeploy
-redeploy:
-# work with `service` or `SERVICE` as input
-ifdef SERVICE
-	service := $(SERVICE)
-endif
-
-ifdef service
-	$(DOCKER_COMPOSE_CMD) build $(service)
-	$(DOCKER_COMPOSE_CMD) stop $(service)
-	$(DOCKER_COMPOSE_CMD) rm --force $(service)
-	$(DOCKER_COMPOSE_CMD) create $(service)
-	$(DOCKER_COMPOSE_CMD) start $(service)
-else
-	@echo "Please provide a service name using `service=[service name]` or `SERVICE=[service name]`"
-endif
 

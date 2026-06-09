@@ -38,16 +38,11 @@
     ],
     "ignore": [
         "node_modules/",
-        "src/accountingservice/genproto/",
-        "src/cartservice/src/obj/",
-        "src/cartservice/tests/obj/",
-        "src/checkoutservice/genproto/",
-        "src/featureflagservice/assets/vendor/",
-        "src/featureflagservice/priv/",
-        "src/productcatalogservice/genproto/",
         "internal/tools/",
         "kubernetes/service-directory-registration.yaml",
+        "kubernetes/otel-collector-external-service.yaml",
         "gcp/",
-        "cloudbuild-deploy.yaml"
+        "cloudbuild-deploy.yaml",
+        "cloudbuild-e2e.yaml"
     ]
   }

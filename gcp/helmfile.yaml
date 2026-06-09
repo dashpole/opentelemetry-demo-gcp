@@ -41,4 +41,3 @@ releases:
   - name: otel-collector-external-service
     namespace: "{{ .Values.namespace }}"
     chart: ./charts/otel-collector-external-service
-
