@@ -103,3 +103,7 @@ Traces in the Trace explorer:
 And logs in the Logs explorer organized by service:
 
 ![logs](gcp_logs.png)
+
+## App Hub Integration
+
+To register the running demo with Google Cloud App Hub and enable Application Monitoring and App Topology, see the [App Hub Registration Skill](.agents/skills/register-apphub/SKILL.md).
