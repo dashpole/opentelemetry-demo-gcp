@@ -38,4 +38,10 @@ components:
       annotations:
         networking.gke.io/internal-load-balancer-allow-global-access: "true"
         networking.gke.io/load-balancer-type: Internal
+  load-generator:
+    resources:
+      limits:
+        memory: 1200Mi
+      requests:
+        memory: 200Mi
 
